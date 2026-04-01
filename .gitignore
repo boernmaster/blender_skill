@@ -1,0 +1,16 @@
+data
+*.stp
+*.step
+*.plugin
+.venv/
+__pycache__/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.bmp
+*.svg
+*.ico
+*.psd
+*.ai
+*.eps

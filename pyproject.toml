@@ -1,0 +1,11 @@
+[project]
+name = "automized-rendering-workflow"
+version = "0.1.0"
+description = "Automated rendering workflow using Blender Remote MCP with Claude Code"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "blender-remote",
+    "bpy",
+    "openpyxl",
+]

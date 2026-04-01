@@ -1,0 +1,9 @@
+{
+  "name": "blender-remote",
+  "version": "0.1.0",
+  "description": "Control Blender headlessly via Claude Code using the blender-remote MCP. Covers session management, scene/material setup, CAD file import, and Cycles/CUDA rendering.",
+  "author": {
+    "name": "Kaltenegger Bernhard"
+  },
+  "keywords": ["blender", "mcp", "3d", "rendering", "cad", "cuda"]
+}
