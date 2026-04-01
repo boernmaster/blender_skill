@@ -151,6 +151,10 @@ frames[0].save(
 print(f"GIF saved: {len(frames)} frames")
 ```
 
+## Saving Scripts
+
+Before executing any render script via the MCP, save it to `scripts/` in the project directory (e.g. `scripts/render_orbit_animation.py`). Update `CLAUDE.md` under `## Custom Settings` with the chosen resolution, sample count, and output path so they persist across sessions.
+
 ## Save the Blender File
 
 ```python

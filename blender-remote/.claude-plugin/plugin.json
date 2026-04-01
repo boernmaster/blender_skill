@@ -5,5 +5,17 @@
   "author": {
     "name": "Kaltenegger Bernhard"
   },
-  "keywords": ["blender", "mcp", "3d", "rendering", "cad", "cuda"]
+  "keywords": ["blender", "mcp", "3d", "rendering", "cad", "cuda"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PLUGIN_ROOT\" && uv sync --quiet"
+          }
+        ]
+      }
+    ]
+  }
 }

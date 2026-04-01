@@ -9,6 +9,17 @@ description: >
 
 # Blender Remote Session Setup
 
+## First-Time Setup
+
+Install Python dependencies (only needed once, or after plugin updates):
+
+```bash
+cd <plugin-dir>
+uv sync
+```
+
+`uv sync` reads `pyproject.toml` and creates a `.venv` with `blender-remote` and `openpyxl`. This also happens automatically at session start if the plugin's `SessionStart` hook is active.
+
 ## Starting a Session
 
 Two terminals are required on the same machine. Both must stay running — if Blender Remote stops, the MCP connection is lost.
@@ -54,6 +65,50 @@ Then reload: `source ~/.bashrc`
 blender-stop      # kill Blender and free port 6688
 blender-restart   # stop then start in one command
 ```
+
+## Project Structure — Scripts and CLAUDE.md
+
+### Save generated scripts locally
+
+Every Python script executed via the MCP should also be saved to a local `scripts/` folder so it can be inspected, reused, and version-controlled. Create the folder once:
+
+```bash
+mkdir -p scripts
+```
+
+Name scripts descriptively, e.g.:
+- `scripts/import_battery_pack.py`
+- `scripts/setup_studio_lighting.py`
+- `scripts/render_orbit_animation.py`
+
+When asked to execute a Blender script, always write it to `scripts/<name>.py` first, then send it to Blender via the MCP tool.
+
+### Maintain a CLAUDE.md
+
+Create or update a `CLAUDE.md` in the project root to document project-specific paths and settings. Claude Code reads this file at session start, so it is the right place for persistent context.
+
+Minimal template — adapt paths to your setup:
+
+```markdown
+# Blender Remote — Project Context
+
+## Environment
+- Blender port: 6688
+- Project dir: /path/to/project
+- Scripts dir: /path/to/project/scripts
+- Data dir: /path/to/project/data
+
+## Data Files
+- CAD assembly: data/<filename>.stp  (convert to GLTF before import)
+- BOM spreadsheet: data/<filename>.xlsx
+
+## Custom Settings
+- Render output: /tmp/renders/
+- Default resolution: 1920x1080
+- Default samples: 128
+```
+
+Update `CLAUDE.md` whenever new data files are added or project paths change.
 
 ## Troubleshooting
 

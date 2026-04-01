@@ -1,0 +1,9 @@
+[project]
+name = "blender-remote-plugin"
+version = "0.1.0"
+description = "Dependencies for blender-remote Claude Code plugin"
+requires-python = ">=3.11"
+dependencies = [
+    "blender-remote",
+    "openpyxl",
+]

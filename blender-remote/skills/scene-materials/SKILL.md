@@ -160,6 +160,10 @@ scene.cycles.glossy_bounces = 4
 scene.cycles.diffuse_bounces = 4
 ```
 
+## Saving Scripts
+
+Before executing any scene or material script via the MCP, save it to `scripts/` in the project directory (e.g. `scripts/setup_studio_lighting.py`). This keeps your work reproducible and allows re-running or adjusting the setup without re-generating it from scratch. Update `CLAUDE.md` with any project-specific material names or lighting choices that differ from the defaults here.
+
 ## Shadow-Catching Ground Plane
 
 ```python

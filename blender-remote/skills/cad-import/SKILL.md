@@ -139,6 +139,10 @@ for filename in sorted(os.listdir(stl_folder)):
             print(f"No BOM entry for: {part_name}")
 ```
 
+## Saving Scripts
+
+Before executing any import script via the MCP, save it to `scripts/` in the project directory (e.g. `scripts/import_assembly.py`). Record the data file paths in `CLAUDE.md` under `## Data Files` so they are available in future sessions without re-specifying them.
+
 ## Centering and Framing Imported Assembly
 
 After import, center the assembly and frame it in the camera view:
