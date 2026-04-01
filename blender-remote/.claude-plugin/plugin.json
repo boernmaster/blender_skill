@@ -12,7 +12,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cd \"$CLAUDE_PLUGIN_ROOT\" && uv sync --quiet"
+            "command": "cd \"$CLAUDE_PLUGIN_ROOT\" && if ! claude mcp list 2>/dev/null | grep -q blender; then echo '[blender-remote] MCP not configured — installing dependencies...' && uv sync --quiet && claude mcp add blender -e BLENDER_HOST=localhost -e BLENDER_PORT=6688 -- uvx blender-remote --host localhost --port 6688 && echo '[blender-remote] MCP registered. Start Blender with: blender-start'; fi"
           }
         ]
       }

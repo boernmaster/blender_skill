@@ -9,16 +9,28 @@ description: >
 
 # Blender Remote Session Setup
 
-## First-Time Setup
+## Automatic Setup Check (SessionStart hook)
 
-Install Python dependencies (only needed once, or after plugin updates):
+Every time Claude Code starts, the plugin's `SessionStart` hook checks whether the `blender` MCP server is registered:
+
+- **MCP found** — nothing to do, session proceeds normally.
+- **MCP not found** — the hook automatically:
+  1. Runs `uv sync` to install all dependencies (`blender-remote`, `openpyxl`, `bpy`, …)
+  2. Registers the `blender` MCP server via `claude mcp add`
+  3. Prints a message: `[blender-remote] MCP registered. Start Blender with: blender-start`
+
+This means first-time setup is fully automatic — no manual `uv sync` or `claude mcp add` needed.
+
+## Manual Setup (if auto-setup fails)
 
 ```bash
 cd <plugin-dir>
 uv sync
+claude mcp add blender \
+  -e BLENDER_HOST=localhost \
+  -e BLENDER_PORT=6688 \
+  -- uvx blender-remote --host localhost --port 6688
 ```
-
-`uv sync` reads `pyproject.toml` and creates a `.venv` with `blender-remote` and `openpyxl`. This also happens automatically at session start if the plugin's `SessionStart` hook is active.
 
 ## Starting a Session
 
