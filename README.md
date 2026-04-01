@@ -131,20 +131,30 @@ EOF
 
 ---
 
-## 7. Add blender-remote as MCP server in Claude Code (remote machine)
+## 7. Install the Claude Code plugin (remote machine)
+
+This repository is a Claude Code marketplace. Install the `blender-remote` plugin directly from GitHub — it registers the MCP server and loads all skills automatically:
 
 ```bash
-claude mcp add blender \
-  -e BLENDER_HOST=localhost \
-  -e BLENDER_PORT=6688 \
-  -- uvx blender-remote --host localhost --port 6688
+claude plugin marketplace add boernmaster/blender_skill
+claude plugin install blender-remote@blender_skill
 ```
 
-Verify it was added:
+The plugin bundles:
+- **MCP server** — registers `blender` on `localhost:6688` automatically
+- **session-setup skill** — start/stop/restart Blender, troubleshoot MCP/CUDA issues
+- **scene-materials skill** — lighting, metallic material archetypes, HDRI backgrounds
+- **cad-import skill** — STL batch import, STP conversion workflow, Excel BOM integration
+- **rendering skill** — Cycles/CUDA config, animation rendering, GIF export
 
-```bash
-claude mcp list
-```
+> **Manual MCP registration** (if not using the plugin):
+> ```bash
+> claude mcp add blender \
+>   -e BLENDER_HOST=localhost \
+>   -e BLENDER_PORT=6688 \
+>   -- uvx blender-remote --host localhost --port 6688
+> claude mcp list
+> ```
 
 ---
 
@@ -283,6 +293,8 @@ blender-remote-cli init --blender-path $(which blender)
 
 | Task | Command |
 |---|---|
+| Install plugin from GitHub | `claude plugin marketplace add boernmaster/blender_skill` |
+| Install blender-remote plugin | `claude plugin install blender-remote@blender_skill` |
 | Install dependencies | `uv sync` |
 | Add a package | `uv add <package>` |
 | Activate venv | `source .venv/bin/activate` |
