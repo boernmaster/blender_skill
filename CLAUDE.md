@@ -20,7 +20,6 @@ blender-start   # or: blender-remote-cli start --background --port 6688
 
 **Terminal 2 — Claude Code:**
 ```bash
-source .venv/bin/activate
 claude
 ```
 
@@ -33,7 +32,6 @@ Then verify MCP is connected: `/mcp` — you should see `blender` listed.
 | Start Blender | `blender-start` |
 | Stop Blender | `blender-stop` |
 | Restart Blender | `blender-restart` |
-| Activate venv | `source .venv/bin/activate` |
 | Check MCP servers | `claude mcp list` |
 | Kill port manually | `fuser -k 6688/tcp` |
 
@@ -52,6 +50,16 @@ claude mcp add blender \
 - **CUDA not detected:** check `nvidia-smi`, verify the startup script at `~/.config/blender/<version>/scripts/startup/enable_cuda.py`
 - **Missing `requests` module:** run `subprocess.call([sys.executable, '-m', 'pip', 'install', 'requests'])` in Blender's Python console
 - **`blender-remote-cli init` fails:** use `blender-remote-cli init --blender-path $(which blender)`
+
+## Output Paths
+
+| Type | Path |
+|---|---|
+| Render frames | `output/frames/` |
+| Final renders / GIFs | `output/` |
+| Blender scene file | `work/scene.blend` |
+
+`blender-start` must be run from this project directory so that `os.getcwd()` in render scripts resolves to the correct location.
 
 ## Notes
 

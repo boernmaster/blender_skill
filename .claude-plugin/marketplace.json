@@ -3,9 +3,6 @@
   "metadata": {
     "description": "Blender automation plugins for Claude Code — headless Blender control via blender-remote MCP, CAD file import, materials, and Cycles/CUDA rendering."
   },
-  "owner": {
-    "name": "Kaltenegger Bernhard"
-  },
   "plugins": [
     {
       "name": "blender-remote",
