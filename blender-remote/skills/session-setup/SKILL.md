@@ -9,194 +9,147 @@ description: >
 
 # Blender Remote Session Setup
 
-## Automatic Setup Check (SessionStart hook)
+## Behavior when this skill is loaded
 
-Every time Claude Code starts, the plugin's `SessionStart` hook checks whether the `blender` MCP server is registered:
+**Do not ask for confirmation. Run all checks and fix everything that is missing.**
+Announce in one line what you are about to do, then execute immediately.
 
-- **MCP found** — nothing to do, session proceeds normally.
-- **MCP not found** — the hook automatically:
-  1. Runs `uv sync` to install all dependencies (`blender-remote`, `openpyxl`, `bpy`, …)
-  2. Registers the `blender` MCP server via `claude mcp add`
-  3. Prints a message: `[blender-remote] MCP registered. Start Blender with: blender-start`
+---
 
-This means first-time setup is fully automatic — no manual `uv sync` or `claude mcp add` needed.
+## Step 1 — Check and fix dependencies
 
-## Manual Setup (if auto-setup fails)
+Run these checks in order. Fix each one that fails before continuing.
+
+### 1a. Python venv
+
+Check: `.venv/` exists in the project root and `blender-remote-cli` is available.
 
 ```bash
-cd <plugin-dir>
+test -f .venv/bin/blender-remote-cli || test -f .venv/Scripts/blender-remote-cli.exe
+```
+
+If missing → install:
+```bash
 uv sync
+```
+
+### 1b. Blender executable
+
+Search in order:
+1. `which blender` (Linux/macOS)
+2. `ls "/c/Program Files/Blender Foundation/"*/blender.exe 2>/dev/null | sort -V | tail -1` (Windows Git Bash)
+
+Save the result as `BLENDER_EXE`.
+
+If not found → tell the user and ask for the path. Do not continue until resolved.
+
+### 1c. Blender addon
+
+Check:
+```bash
+blender-remote-cli list 2>/dev/null | grep -q blender_remote
+```
+
+If missing → install:
+```bash
+blender-remote-cli init --blender-path "$BLENDER_EXE"
+blender-remote-cli install
+```
+
+### 1d. Blender MCP server
+
+Check:
+```bash
+claude mcp list 2>/dev/null | grep -q blender
+```
+
+If missing → register:
+```bash
 claude mcp add blender \
   -e BLENDER_HOST=localhost \
   -e BLENDER_PORT=6688 \
   -- uvx blender-remote --host localhost --port 6688
 ```
 
-## Starting a Session
+### 1e. Project folders
 
-Two terminals are required on the same machine. Both must stay running — if Blender Remote stops, the MCP connection is lost.
-
-**Terminal 1 — start Blender headless:**
+Create any missing directories:
 ```bash
-blender-start
-# Equivalent long form:
-cd <project-dir> && source .venv/bin/activate \
-  && fuser -k 6688/tcp 2>/dev/null \
-  ; pkill -f blender 2>/dev/null \
-  ; sleep 1 \
-  && blender-remote-cli start --background --port 6688
+mkdir -p scripts output/frames work
 ```
 
-**Terminal 2 — start Claude Code:**
+### 1f. Shell aliases
+
+Check if `blender-start` alias exists:
 ```bash
-source .venv/bin/activate
-claude
+grep -q "blender-start" ~/.bashrc 2>/dev/null || grep -q "blender-start" ~/.bash_profile 2>/dev/null
 ```
 
-Inside Claude Code, verify MCP tools are loaded:
-```
-/mcp
-```
-`blender` must appear as an active server before issuing any Blender commands.
-
-## Convenience Aliases
-
-If the aliases are not yet set up, add them to `~/.bashrc` (replace `<project-dir>` with the actual path):
-
+If missing → append to `~/.bashrc` (replace `PROJECT_DIR` with `pwd`):
 ```bash
-alias blender-start='cd <project-dir> && source .venv/bin/activate && fuser -k 6688/tcp 2>/dev/null; pkill -f blender 2>/dev/null; sleep 1 && blender-remote-cli start --background --port 6688'
+PROJECT_DIR=$(pwd)
+cat >> ~/.bashrc << EOF
+
+# blender-remote aliases
+alias blender-start='cd $PROJECT_DIR && source .venv/bin/activate && fuser -k 6688/tcp 2>/dev/null; pkill -f blender 2>/dev/null; sleep 1 && blender-remote-cli start --background --port 6688'
 alias blender-stop='fuser -k 6688/tcp 2>/dev/null; pkill -f blender 2>/dev/null'
 alias blender-restart='blender-stop && sleep 1 && blender-start'
+EOF
+source ~/.bashrc
 ```
 
-Then reload: `source ~/.bashrc`
+---
 
-## Stopping and Restarting
+## Step 2 — Start Blender (if requested)
 
+If the user asked to start Blender, run:
 ```bash
-blender-stop      # kill Blender and free port 6688
-blender-restart   # stop then start in one command
+blender-start
 ```
 
-## Project Structure — Scripts and CLAUDE.md
-
-### Save generated scripts locally
-
-Every Python script executed via the MCP should also be saved to a local `scripts/` folder so it can be inspected, reused, and version-controlled. Create the folder once:
-
+Then verify the MCP connection is live:
 ```bash
-mkdir -p scripts
+claude mcp list
 ```
 
-Name scripts descriptively, e.g.:
-- `scripts/import_battery_pack.py`
-- `scripts/setup_studio_lighting.py`
-- `scripts/render_orbit_animation.py`
+---
 
-When asked to execute a Blender script, always write it to `scripts/<name>.py` first, then send it to Blender via the MCP tool.
+## Step 3 — Report status
 
-### Maintain a CLAUDE.md
+After all steps complete, print a single short status line, e.g.:
 
-Create or update a `CLAUDE.md` in the project root to document project-specific paths and settings. Claude Code reads this file at session start, so it is the right place for persistent context.
+> Setup complete. Blender MCP ready. Run `blender-start` in a terminal to start Blender.
 
-Minimal template — adapt paths to your setup:
+Or if Blender was started:
 
-```markdown
-# Blender Remote — Project Context
+> Blender running on port 6688. MCP connected.
 
-## Environment
-- Blender port: 6688
-- Project dir: /path/to/project
-- Scripts dir: /path/to/project/scripts
-- Data dir: /path/to/project/data
+---
 
-## Data Files
-- CAD assembly: data/<filename>.stp  (convert to GLTF before import)
-- BOM spreadsheet: data/<filename>.xlsx
+## Troubleshooting reference
 
-## Custom Settings
-- Render output: /tmp/renders/
-- Default resolution: 1920x1080
-- Default samples: 128
-```
-
-Update `CLAUDE.md` whenever new data files are added or project paths change.
-
-## Troubleshooting
-
-### Port already in use
+### Port in use
 ```bash
 fuser -k 6688/tcp
-# or identify the process first:
-ss -tulpn | grep 6688
-kill <PID>
 ```
 
 ### CUDA not detected
-Check that NVIDIA drivers are working:
 ```bash
 nvidia-smi
+blender-remote-cli init --blender-path "$BLENDER_EXE"
 ```
 
-Verify Blender detects the GPU:
-```bash
-blender --background --python-expr "
-import bpy
-cprefs = bpy.context.preferences.addons['cycles'].preferences
-cprefs.get_devices()
-for d in cprefs.devices:
-    print(d.name, d.type, d.use)
-"
-```
-
-CUDA is enabled persistently via a startup script at:
-`~/.config/blender/<version>/scripts/startup/enable_cuda.py`
-
-If the file is missing, recreate it:
-```bash
-BLENDER_VERSION=$(blender --version | head -1 | awk '{print $2}' | cut -d. -f1,2)
-mkdir -p ~/.config/blender/$BLENDER_VERSION/scripts/startup
-
-cat > ~/.config/blender/$BLENDER_VERSION/scripts/startup/enable_cuda.py << 'EOF'
-import bpy
-
-def enable_cuda():
-    try:
-        cprefs = bpy.context.preferences.addons['cycles'].preferences
-        cprefs.compute_device_type = 'CUDA'
-        cprefs.get_devices()
-        for device in cprefs.devices:
-            device.use = (device.type == 'CUDA')
-        bpy.context.scene.cycles.device = 'GPU'
-        bpy.context.scene.render.engine = 'CYCLES'
-        bpy.ops.wm.save_userpref()
-        print("CUDA enabled:", [d.name for d in cprefs.devices if d.use])
-    except Exception as e:
-        print(f"CUDA setup failed: {e}")
-
-import bpy.app.timers
-bpy.app.timers.register(enable_cuda, first_interval=1.0)
-EOF
-```
-
-### `requests` module missing (addon install error)
-Run in Blender's Python console (Scripting workspace):
-```python
-import subprocess, sys
-subprocess.call([sys.executable, '-m', 'pip', 'install', 'requests'])
-```
-
-### `blender-remote-cli init` fails (no auto-detect)
-```bash
-blender-remote-cli init --blender-path $(which blender)
-```
-
-### Re-register MCP server
+### Re-register MCP
 ```bash
 claude mcp remove blender
 claude mcp add blender \
   -e BLENDER_HOST=localhost \
   -e BLENDER_PORT=6688 \
   -- uvx blender-remote --host localhost --port 6688
-claude mcp list
+```
+
+### Windows — Blender not in PATH (PowerShell)
+```powershell
+blender-remote-cli init --blender-path "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe"
+blender-remote-cli install
 ```
