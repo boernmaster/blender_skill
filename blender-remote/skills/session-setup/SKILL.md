@@ -13,27 +13,27 @@ description: >
 
 **Do not ask for confirmation. Run all checks and fix everything that is missing.**
 Announce in one line what you are about to do, then execute immediately.
+Blender is started directly from Claude — no second terminal needed.
 
 ---
 
 ## Step 1 — Check and fix dependencies
 
-Run these checks in order. Fix each one that fails before continuing.
+Run all checks in order. Fix each one before continuing.
 
 ### 1a. Python venv ⚠️ MANDATORY
 
-Check: `.venv/` exists in the project root and `blender-remote-cli` is available.
-
+Check:
 ```bash
 test -f .venv/bin/blender-remote-cli || test -f .venv/Scripts/blender-remote-cli.exe
 ```
 
-If missing → **create it immediately, do not skip**:
+If missing → **create immediately, do not skip**:
 ```bash
 uv sync
 ```
 
-If `uv sync` fails → stop, report the error to the user, and do not continue with any further steps. The venv is required for everything else.
+If `uv sync` fails → stop, report the error, do not continue. Everything else depends on the venv.
 
 ### 1b. Blender executable
 
@@ -41,21 +41,21 @@ Search in order:
 1. `which blender` (Linux/macOS)
 2. `ls "/c/Program Files/Blender Foundation/"*/blender.exe 2>/dev/null | sort -V | tail -1` (Windows Git Bash)
 
-Save the result as `BLENDER_EXE`.
+Store the result as `BLENDER_EXE`.
 
-If not found → tell the user and ask for the path. Do not continue until resolved.
+If not found → ask the user for the path. Do not continue until resolved.
 
 ### 1c. Blender addon
 
 Check:
 ```bash
-blender-remote-cli list 2>/dev/null | grep -q blender_remote
+.venv/bin/blender-remote-cli list 2>/dev/null | grep -q blender_remote
 ```
 
 If missing → install:
 ```bash
-blender-remote-cli init --blender-path "$BLENDER_EXE"
-blender-remote-cli install
+.venv/bin/blender-remote-cli init --blender-path "$BLENDER_EXE"
+.venv/bin/blender-remote-cli install
 ```
 
 ### 1d. Blender MCP server
@@ -80,14 +80,14 @@ Create any missing directories:
 mkdir -p scripts output/frames work
 ```
 
-### 1f. Shell aliases
+### 1f. Shell aliases (optional convenience)
 
-Check if `blender-start` alias exists:
+Check:
 ```bash
 grep -q "blender-start" ~/.bashrc 2>/dev/null || grep -q "blender-start" ~/.bash_profile 2>/dev/null
 ```
 
-If missing → append to `~/.bashrc` (replace `PROJECT_DIR` with `pwd`):
+If missing → append:
 ```bash
 PROJECT_DIR=$(pwd)
 cat >> ~/.bashrc << EOF
@@ -102,29 +102,50 @@ source ~/.bashrc
 
 ---
 
-## Step 2 — Start Blender (if requested)
+## Step 2 — Start Blender
 
-If the user asked to start Blender, run:
+Start Blender headless in the background directly from Claude:
+
 ```bash
-blender-start
+cd <project-dir> \
+  && source .venv/bin/activate \
+  && fuser -k 6688/tcp 2>/dev/null; pkill -f blender 2>/dev/null; sleep 1 \
+  && nohup blender-remote-cli start --background --port 6688 > /tmp/blender-remote.log 2>&1 &
 ```
 
-Then verify the MCP connection is live:
-```bash
-claude mcp list
+Wait ~3 seconds, then verify the connection using the MCP tool:
+
 ```
+mcp: blender / check_connection_status
+```
+
+If the connection check fails:
+1. Check the log: `tail /tmp/blender-remote.log`
+2. Check if port is already in use: `fuser -k 6688/tcp` then retry
+3. Re-run the start command
 
 ---
 
 ## Step 3 — Report status
 
-After all steps complete, print a single short status line, e.g.:
+After all steps complete, print a single short status line:
 
-> Setup complete. Blender MCP ready. Run `blender-start` in a terminal to start Blender.
+> Setup complete. Blender running on port 6688, MCP connected.
 
-Or if Blender was started:
+Or if a step failed:
 
-> Blender running on port 6688. MCP connected.
+> Setup failed at [step]. Error: [message].
+
+---
+
+## Stop / Restart Blender
+
+**Stop:**
+```bash
+fuser -k 6688/tcp 2>/dev/null; pkill -f blender 2>/dev/null
+```
+
+**Restart:** run Stop, then Step 2.
 
 ---
 
@@ -138,7 +159,7 @@ fuser -k 6688/tcp
 ### CUDA not detected
 ```bash
 nvidia-smi
-blender-remote-cli init --blender-path "$BLENDER_EXE"
+.venv/bin/blender-remote-cli init --blender-path "$BLENDER_EXE"
 ```
 
 ### Re-register MCP
@@ -152,6 +173,6 @@ claude mcp add blender \
 
 ### Windows — Blender not in PATH (PowerShell)
 ```powershell
-blender-remote-cli init --blender-path "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe"
-blender-remote-cli install
+.venv\Scripts\blender-remote-cli init --blender-path "C:\Program Files\Blender Foundation\Blender 5.1\blender.exe"
+.venv\Scripts\blender-remote-cli install
 ```
