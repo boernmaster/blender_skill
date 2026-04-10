@@ -20,7 +20,7 @@ Announce in one line what you are about to do, then execute immediately.
 
 Run these checks in order. Fix each one that fails before continuing.
 
-### 1a. Python venv
+### 1a. Python venv ⚠️ MANDATORY
 
 Check: `.venv/` exists in the project root and `blender-remote-cli` is available.
 
@@ -28,10 +28,12 @@ Check: `.venv/` exists in the project root and `blender-remote-cli` is available
 test -f .venv/bin/blender-remote-cli || test -f .venv/Scripts/blender-remote-cli.exe
 ```
 
-If missing → install:
+If missing → **create it immediately, do not skip**:
 ```bash
 uv sync
 ```
+
+If `uv sync` fails → stop, report the error to the user, and do not continue with any further steps. The venv is required for everything else.
 
 ### 1b. Blender executable
 
