@@ -154,7 +154,7 @@ scene.render.engine = 'CYCLES'
 scene.world.light_settings.use_ambient_occlusion = True
 scene.world.light_settings.ao_factor = 0.3
 
-# Screen-space reflections (EEVEE only; for Cycles use glossy bounces)
+# Cycles light-bounce settings for realistic metals
 scene.cycles.use_fast_gi = True
 scene.cycles.glossy_bounces = 4
 scene.cycles.diffuse_bounces = 4
@@ -163,6 +163,185 @@ scene.cycles.diffuse_bounces = 4
 ## Saving Scripts
 
 Before executing any scene or material script via the MCP, save it to `scripts/` in the project directory (e.g. `scripts/setup_studio_lighting.py`). This keeps your work reproducible and allows re-running or adjusting the setup without re-generating it from scratch. Update `CLAUDE.md` with any project-specific material names or lighting choices that differ from the defaults here.
+
+## Product Scene Presets
+
+Self-contained camera + lighting + world setups for common professional product visualisations (engines, traction batteries, electric drive units, premium product showcases). Each preset assumes the subject is centered at the world origin with its bounding box roughly fitting in a 2 m cube — scale or reposition the subject before applying, or scale the lights/camera proportionally afterwards.
+
+### Shared helpers
+
+```python
+import bpy, math
+
+def _clear_scene_lights():
+    for obj in [o for o in bpy.data.objects if o.type == 'LIGHT']:
+        bpy.data.objects.remove(obj, do_unlink=True)
+
+def _add_area(name, location, rotation, energy, size=2.0, color=(1, 1, 1)):
+    bpy.ops.object.light_add(type='AREA', location=location)
+    light = bpy.context.object
+    light.name = name
+    light.rotation_euler = rotation
+    light.data.energy = energy
+    light.data.size = size
+    light.data.color = color
+    return light
+
+def _set_camera(location, target=(0, 0, 0.5), lens=50):
+    scene = bpy.context.scene
+    cam = scene.camera
+    if cam is None:
+        bpy.ops.object.camera_add(location=location)
+        cam = bpy.context.object
+        scene.camera = cam
+    else:
+        cam.location = location
+    cam.data.lens = lens
+    # Aim at target via TRACK_TO on a temporary empty
+    bpy.ops.object.empty_add(location=target)
+    aim = bpy.context.object
+    aim.name = 'CamAim'
+    for c in list(cam.constraints):
+        cam.constraints.remove(c)
+    track = cam.constraints.new('TRACK_TO')
+    track.target = aim
+    track.track_axis = 'TRACK_NEGATIVE_Z'
+    track.up_axis = 'UP_Y'
+    return cam
+
+def _set_world_solid(color, strength=1.0):
+    world = bpy.context.scene.world
+    world.use_nodes = True
+    nodes = world.node_tree.nodes
+    nodes.clear()
+    bg = nodes.new('ShaderNodeBackground')
+    out = nodes.new('ShaderNodeOutputWorld')
+    bg.inputs['Color'].default_value = (*color, 1.0)
+    bg.inputs['Strength'].default_value = strength
+    world.node_tree.links.new(bg.outputs['Background'], out.inputs['Surface'])
+```
+
+### Engine / Turbine — Dramatic Hero
+
+For aero engines, ICE engines, gearboxes, turbines. Dark moody backdrop, strong directional key, hard rim for silhouette, low warm fill. Camera low and tight for hero feel.
+
+```python
+def setup_engine_hero():
+    _clear_scene_lights()
+    _set_world_solid((0.015, 0.015, 0.02), strength=0.3)
+
+    # Cool key from upper-front-left
+    _add_area('Key',  ( 5, -3, 6), (math.radians( 55), 0, math.radians( 35)),
+              energy=1500, size=3.0, color=(1.00, 0.98, 0.95))
+    # Hard rim from upper-back-right (separates from black background)
+    _add_area('Rim',  (-3,  5, 5), (math.radians(-50), 0, math.radians(-160)),
+              energy=900,  size=1.5, color=(0.85, 0.92, 1.00))
+    # Warm low fill — gives depth to undersides without lifting blacks
+    _add_area('Fill', (-4, -3, 1), (math.radians( 75), 0, math.radians( -50)),
+              energy=180,  size=4.0, color=(1.00, 0.82, 0.62))
+
+    # 85 mm lens, 3/4 angle, slightly below subject mid-height
+    _set_camera(location=(7, -7, 1.8), target=(0, 0, 1.0), lens=85)
+```
+
+### Traction Battery / EV Component — Clean Industrial
+
+For battery packs, inverters, motors, electronics, white-paper renders. Bright neutral environment, broad soft top light, low-contrast fill from all sides, faint shadow for grounding. Camera slightly elevated, mild perspective.
+
+```python
+def setup_battery_clean():
+    _clear_scene_lights()
+    _set_world_solid((0.85, 0.86, 0.88), strength=1.2)
+
+    # Large soft overhead — primary illumination
+    _add_area('Top',   (0, 0, 6), (0, 0, 0),
+              energy=600, size=8.0)
+    # Front fill — flatten shadows
+    _add_area('Front', (0, -5, 2), (math.radians(80), 0, 0),
+              energy=300, size=5.0)
+    # Side wraps — eliminate dark sides
+    _add_area('Left',  (-5, 0, 2), (math.radians(80), 0, math.radians(-90)),
+              energy=200, size=4.0)
+    _add_area('Right', ( 5, 0, 2), (math.radians(80), 0, math.radians( 90)),
+              energy=200, size=4.0)
+
+    # 50 mm, slightly elevated 3/4 view, mild perspective
+    _set_camera(location=(5, -5, 3), target=(0, 0, 0.5), lens=50)
+```
+
+### Electric Drive Unit — Technical Showcase
+
+For integrated EV powertrains: motor + inverter + gearbox as one assembly, e-axle, stator/rotor cutaways. Cool clean environment to emphasize machined aluminium housings and precision surfaces, moderate contrast (more than a battery render, less than an engine hero), subtle warm rim to lift metallic tones. Medium-tight framing to convey compactness.
+
+```python
+def setup_electric_drive():
+    _clear_scene_lights()
+    _set_world_solid((0.10, 0.12, 0.14), strength=0.6)
+
+    # Cool top-key — crisp highlights on machined surfaces
+    _add_area('Key',  ( 3, -4, 5), (math.radians( 55), 0, math.radians( 30)),
+              energy=1100, size=3.5, color=(0.95, 0.98, 1.00))
+    # Warm rim — separates aluminium housing from cool background
+    _add_area('Rim',  (-4,  3, 4), (math.radians(-45), 0, math.radians(-150)),
+              energy=500,  size=1.5, color=(1.00, 0.88, 0.72))
+    # Broad under-fill — reveals ribbing and casting detail without flattening
+    _add_area('Fill', ( 0, -5, 1), (math.radians( 80), 0, 0),
+              energy=220,  size=6.0, color=(0.90, 0.94, 1.00))
+    # Side accent — shows the inverter/gearbox interface
+    _add_area('Side', ( 5,  0, 2), (math.radians( 80), 0, math.radians( 90)),
+              energy=180,  size=3.0)
+
+    # 70 mm, slightly elevated 3/4 view — compact and integrated look
+    _set_camera(location=(5.5, -5.5, 2.5), target=(0, 0, 0.6), lens=70)
+```
+
+### Premium Showcase — Studio Hero
+
+For premium consumer products, marketing renders, packaging shots. Gradient backdrop, strong key with softbox feel, sharp rim, subtle reflection plane, lower camera angle.
+
+```python
+def setup_premium_showcase():
+    _clear_scene_lights()
+
+    # Gradient world — light top, dark bottom
+    world = bpy.context.scene.world
+    world.use_nodes = True
+    nodes = world.node_tree.nodes
+    nodes.clear()
+    bg   = nodes.new('ShaderNodeBackground')
+    grad = nodes.new('ShaderNodeTexGradient')
+    coord = nodes.new('ShaderNodeTexCoord')
+    mapn  = nodes.new('ShaderNodeMapping')
+    out   = nodes.new('ShaderNodeOutputWorld')
+    mapn.inputs['Rotation'].default_value[1] = math.radians(90)
+    grad.gradient_type = 'LINEAR'
+    bg.inputs['Strength'].default_value = 0.5
+    links = world.node_tree.links
+    links.new(coord.outputs['Generated'], mapn.inputs['Vector'])
+    links.new(mapn.outputs['Vector'], grad.inputs['Vector'])
+    links.new(grad.outputs['Color'], bg.inputs['Color'])
+    links.new(bg.outputs['Background'], out.inputs['Surface'])
+
+    _add_area('Key',  ( 4, -4, 5), (math.radians( 50), 0, math.radians( 45)),
+              energy=900, size=4.0)
+    _add_area('Rim',  (-3,  4, 4), (math.radians(-50), 0, math.radians(-150)),
+              energy=600, size=1.0)
+    _add_area('Fill', (-3, -3, 2), (math.radians( 70), 0, math.radians( -45)),
+              energy=120, size=5.0, color=(0.95, 0.97, 1.00))
+
+    _set_camera(location=(6, -6, 1.2), target=(0, 0, 0.6), lens=70)
+```
+
+### Choosing a preset
+
+| Subject                                       | Preset                  |
+|-----------------------------------------------|-------------------------|
+| Aero / car engine, turbine, gearbox           | `setup_engine_hero`     |
+| Traction battery pack, cell module, PCB       | `setup_battery_clean`   |
+| Electric drive unit, e-axle, motor + inverter | `setup_electric_drive`  |
+| Consumer product, marketing hero              | `setup_premium_showcase`|
+
+All presets pair well with the matching `Cycles` settings in the *Render Quality Settings* section above and the metallic materials defined earlier in this skill.
 
 ## Shadow-Catching Ground Plane
 

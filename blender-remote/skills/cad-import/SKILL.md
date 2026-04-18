@@ -73,13 +73,13 @@ bpy.ops.import_scene.gltf(filepath='/path/to/model.glb')
 import openpyxl
 
 def read_bom(filepath):
-    """Returns a dict: {part_name: material_category}"""
+    """Returns a dict: {part_name: material_category}. Skips rows where either cell is empty."""
     wb = openpyxl.load_workbook(filepath)
     ws = wb.active
     bom = {}
     for row in ws.iter_rows(min_row=2, values_only=True):
         part_name, material_category = row[0], row[1]
-        if part_name:
+        if part_name and material_category:
             bom[str(part_name).strip()] = str(material_category).strip()
     return bom
 ```
@@ -96,7 +96,7 @@ def read_bom(filepath):
     return {
         str(row[0]).strip(): str(row[1]).strip()
         for row in ws.iter_rows(min_row=2, values_only=True)
-        if row[0]
+        if row[0] and row[1]
     }
 
 # Material category → Blender material name mapping
