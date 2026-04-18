@@ -186,3 +186,104 @@ scene.render.resolution_percentage = 50
 scene.cycles.samples = 256
 scene.render.resolution_percentage = 100
 ```
+
+## Lean Iteration Workflow
+
+**Always render at the lowest quality that answers the question being asked.** Each pass exists to validate something specific — don't burn samples until the prior pass has been approved.
+
+### Iteration tiers
+
+| Pass        | Purpose                                  | Samples | Resolution | Frames |
+|-------------|------------------------------------------|---------|------------|--------|
+| `composition` | Camera framing, layout, basic lighting | 16      | 25%        | 1      |
+| `lookdev`     | Materials, light intensity, color      | 32      | 50%        | 1      |
+| `motion`      | Animation timing, frame coverage       | 32      | 50%        | every 4th frame |
+| `review`      | Stakeholder approval                   | 64      | 100%       | full   |
+| `final`       | Hand-off / portfolio                   | 256+    | 100%–200%  | full   |
+
+Promote one tier at a time. If `composition` is rejected, fix it and re-render `composition` — never jump to `lookdev` to "see what it looks like."
+
+### Lean preset helper
+
+```python
+import bpy
+
+PRESETS = {
+    'composition': {'samples': 16, 'res_pct': 25, 'denoise': True},
+    'lookdev':     {'samples': 32, 'res_pct': 50, 'denoise': True},
+    'motion':      {'samples': 32, 'res_pct': 50, 'denoise': True},
+    'review':      {'samples': 64, 'res_pct': 100, 'denoise': True},
+    'final':       {'samples': 256, 'res_pct': 100, 'denoise': True},
+    'portfolio':   {'samples': 512, 'res_pct': 200, 'denoise': True},
+}
+
+def apply_preset(name):
+    p = PRESETS[name]
+    scene = bpy.context.scene
+    scene.cycles.samples = p['samples']
+    scene.cycles.use_denoising = p['denoise']
+    scene.render.resolution_percentage = p['res_pct']
+    # Persistent data: reuse BVH, shaders, geometry between frames in an animation
+    scene.render.use_persistent_data = True
+    print(f"[render] preset={name} samples={p['samples']} res={p['res_pct']}%")
+```
+
+### Skip frames already rendered
+
+Re-running an animation render after a crash should not redo finished frames.
+
+```python
+import bpy, os, re
+
+def render_missing_frames(output_dir, prefix='frame_'):
+    scene = bpy.context.scene
+    pattern = re.compile(re.escape(prefix) + r'(\d+)\.')
+    done = {int(m.group(1)) for f in os.listdir(output_dir) if (m := pattern.match(f))}
+    for frame in range(scene.frame_start, scene.frame_end + 1):
+        if frame in done:
+            continue
+        scene.frame_set(frame)
+        scene.render.filepath = os.path.join(output_dir, f'{prefix}{frame:04d}.png')
+        bpy.ops.render.render(write_still=True)
+```
+
+### Animation preview — render every Nth frame
+
+Validate motion timing without rendering 120 frames.
+
+```python
+import bpy, os
+
+def render_motion_preview(output_dir, step=4):
+    scene = bpy.context.scene
+    for frame in range(scene.frame_start, scene.frame_end + 1, step):
+        scene.frame_set(frame)
+        scene.render.filepath = os.path.join(output_dir, f'preview_{frame:04d}.png')
+        bpy.ops.render.render(write_still=True)
+```
+
+### Lean defaults to set once per scene
+
+```python
+import bpy
+
+scene = bpy.context.scene
+# Reuse geometry/shader caches between frames — large speedup for animations
+scene.render.use_persistent_data = True
+# Adaptive sampling: stop sampling pixels that have already converged
+scene.cycles.use_adaptive_sampling = True
+scene.cycles.adaptive_threshold = 0.01
+# Cap per-tile time so a slow region doesn't dominate
+scene.cycles.time_limit = 0  # 0 = no limit; set seconds per frame for hard cap
+# Denoiser: OptiX is fastest on NVIDIA, OpenImageDenoise is the highest quality fallback
+scene.cycles.denoiser = 'OPTIX'
+```
+
+### Workflow checklist
+
+1. Apply `composition` preset → render frame 1 → confirm camera and layout.
+2. Apply `lookdev` preset → render frame 1 → confirm materials and lighting.
+3. Apply `motion` preset → run `render_motion_preview(step=4)` → confirm timing.
+4. Apply `review` preset → run `render_missing_frames(...)` for the full range.
+5. Apply `final` preset → re-run `render_missing_frames(...)` only after review sign-off.
+
