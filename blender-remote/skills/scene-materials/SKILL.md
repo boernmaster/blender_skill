@@ -166,7 +166,7 @@ Before executing any scene or material script via the MCP, save it to `scripts/`
 
 ## Product Scene Presets
 
-Self-contained camera + lighting + world setups for common professional product visualisations. Each preset assumes the subject is centered at the world origin with its bounding box roughly fitting in a 2 m cube — scale or reposition the subject before applying, or scale the lights/camera proportionally afterwards.
+Self-contained camera + lighting + world setups for common professional product visualisations (engines, traction batteries, electric drive units, premium product showcases). Each preset assumes the subject is centered at the world origin with its bounding box roughly fitting in a 2 m cube — scale or reposition the subject before applying, or scale the lights/camera proportionally afterwards.
 
 ### Shared helpers
 
@@ -269,27 +269,30 @@ def setup_battery_clean():
     _set_camera(location=(5, -5, 3), target=(0, 0, 0.5), lens=50)
 ```
 
-### Educational / Explainer — Even & Neutral
+### Electric Drive Unit — Technical Showcase
 
-For technical diagrams, training material, instructions, exploded views. Fully even lighting from a sky dome, no harsh shadows, white infinite background. Near-orthographic camera so geometry reads cleanly without perspective distortion.
+For integrated EV powertrains: motor + inverter + gearbox as one assembly, e-axle, stator/rotor cutaways. Cool clean environment to emphasize machined aluminium housings and precision surfaces, moderate contrast (more than a battery render, less than an engine hero), subtle warm rim to lift metallic tones. Medium-tight framing to convey compactness.
 
 ```python
-def setup_educational():
+def setup_electric_drive():
     _clear_scene_lights()
-    _set_world_solid((1.0, 1.0, 1.0), strength=2.0)
+    _set_world_solid((0.10, 0.12, 0.14), strength=0.6)
 
-    # Sun for crisp definition without dominance
-    bpy.ops.object.light_add(type='SUN', location=(0, 0, 10))
-    sun = bpy.context.object
-    sun.name = 'KeySun'
-    sun.rotation_euler = (math.radians(35), math.radians(15), math.radians(20))
-    sun.data.energy = 2.0
+    # Cool top-key — crisp highlights on machined surfaces
+    _add_area('Key',  ( 3, -4, 5), (math.radians( 55), 0, math.radians( 30)),
+              energy=1100, size=3.5, color=(0.95, 0.98, 1.00))
+    # Warm rim — separates aluminium housing from cool background
+    _add_area('Rim',  (-4,  3, 4), (math.radians(-45), 0, math.radians(-150)),
+              energy=500,  size=1.5, color=(1.00, 0.88, 0.72))
+    # Broad under-fill — reveals ribbing and casting detail without flattening
+    _add_area('Fill', ( 0, -5, 1), (math.radians( 80), 0, 0),
+              energy=220,  size=6.0, color=(0.90, 0.94, 1.00))
+    # Side accent — shows the inverter/gearbox interface
+    _add_area('Side', ( 5,  0, 2), (math.radians( 80), 0, math.radians( 90)),
+              energy=180,  size=3.0)
 
-    # Soft top fill to lift shadows
-    _add_area('TopFill', (0, 0, 8), (0, 0, 0), energy=400, size=10.0)
-
-    # Long lens far back ≈ orthographic look while keeping perspective camera
-    _set_camera(location=(8, -8, 4), target=(0, 0, 0.5), lens=120)
+    # 70 mm, slightly elevated 3/4 view — compact and integrated look
+    _set_camera(location=(5.5, -5.5, 2.5), target=(0, 0, 0.6), lens=70)
 ```
 
 ### Premium Showcase — Studio Hero
@@ -331,12 +334,12 @@ def setup_premium_showcase():
 
 ### Choosing a preset
 
-| Subject                                  | Preset                  |
-|------------------------------------------|-------------------------|
-| Aero / car engine, turbine, gearbox      | `setup_engine_hero`     |
-| Traction battery, inverter, motor, PCB   | `setup_battery_clean`   |
-| Training material, exploded view, diagram| `setup_educational`     |
-| Consumer product, marketing hero         | `setup_premium_showcase`|
+| Subject                                       | Preset                  |
+|-----------------------------------------------|-------------------------|
+| Aero / car engine, turbine, gearbox           | `setup_engine_hero`     |
+| Traction battery pack, cell module, PCB       | `setup_battery_clean`   |
+| Electric drive unit, e-axle, motor + inverter | `setup_electric_drive`  |
+| Consumer product, marketing hero              | `setup_premium_showcase`|
 
 All presets pair well with the matching `Cycles` settings in the *Render Quality Settings* section above and the metallic materials defined earlier in this skill.
 
