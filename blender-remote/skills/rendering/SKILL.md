@@ -83,7 +83,7 @@ print("Animation rendered to:", scene.render.filepath)
 
 ## Camera Animation — Cinematic Orbit
 
-Create a smooth 360° orbit around the scene:
+Create a smooth 360° orbit around the scene. The camera is parented to an empty at the scene center; rotating the empty sweeps the camera around it.
 
 ```python
 import bpy, math
@@ -92,19 +92,25 @@ scene = bpy.context.scene
 scene.frame_start = 1
 scene.frame_end = 120
 
-# Create empty at scene center as orbit target
+# Empty at the scene center acts as the orbit pivot
 bpy.ops.object.empty_add(location=(0, 0, 1))
 target = bpy.context.object
 target.name = 'OrbitTarget'
 
-# Position camera
+# Position camera at orbit radius
 cam = scene.camera
 if cam is None:
     bpy.ops.object.camera_add(location=(8, 0, 3))
     cam = bpy.context.object
     scene.camera = cam
+else:
+    cam.location = (8, 0, 3)
 
-# Aim camera at target
+# Parent camera to the empty so the camera follows its rotation
+cam.parent = target
+cam.matrix_parent_inverse = target.matrix_world.inverted()
+
+# Aim camera at the empty at all times
 constraint = cam.constraints.new('TRACK_TO')
 constraint.target = target
 constraint.track_axis = 'TRACK_NEGATIVE_Z'
@@ -114,9 +120,9 @@ constraint.up_axis = 'UP_Y'
 target.rotation_euler = (0, 0, 0)
 target.keyframe_insert('rotation_euler', frame=1)
 target.rotation_euler = (0, 0, math.radians(360))
-target.keyframe_insert('rotation_euler', frame=120)
+target.keyframe_insert('rotation_euler', frame=scene.frame_end)
 
-# Use linear interpolation for smooth orbit
+# Linear interpolation for a constant-speed orbit
 for fcurve in target.animation_data.action.fcurves:
     for kp in fcurve.keyframe_points:
         kp.interpolation = 'LINEAR'

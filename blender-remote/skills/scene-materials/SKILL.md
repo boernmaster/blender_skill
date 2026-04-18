@@ -154,7 +154,7 @@ scene.render.engine = 'CYCLES'
 scene.world.light_settings.use_ambient_occlusion = True
 scene.world.light_settings.ao_factor = 0.3
 
-# Screen-space reflections (EEVEE only; for Cycles use glossy bounces)
+# Cycles light-bounce settings for realistic metals
 scene.cycles.use_fast_gi = True
 scene.cycles.glossy_bounces = 4
 scene.cycles.diffuse_bounces = 4
